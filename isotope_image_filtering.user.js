@@ -53,8 +53,8 @@ function filterPictures(laidOutItems) {
 
 function updateFilter() {
     if (filterSwitch) {
-        $p.isotope({ filter: ':not(.filtered)' + (filterNsfw ? ':not(.item:has(a:has(img[class ~= img-nsfw])))' : '')
-                    + (filterSpoilers ? ':not(.item:has(a:has(img[class ~= img-spoiler])))' : '')});
+        $p.isotope({ filter: ':not(.filtered)' + (filterNsfw ? ':not(:has(a > .img-nsfw))' : '')
+                    + (filterSpoilers ? ':not(:has(a > .img-spoiler))' : '')});
     } else {
         $p.isotope({ filter: '*' });
     }
