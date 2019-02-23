@@ -91,6 +91,12 @@ function setupInfScroll(iso) {
     });
 
     $("#photo_gallery.infinite").on( 'append.infiniteScroll', function( event, response, path, items ) {
+        // terminate infinite scroll if we reached the end
+        if (!items.length) {
+            var endMsg = '<p class="infinite-scroll-last" style="text-align: center;font-size: 18px; margin-top: 20px;">No more content</p>'
+            $('#infinite-scroll-wrapper').append(endMsg);
+            $p.infiniteScroll('destroy');
+        }
         filterPictures(items);
         $(items).find('img').each( function() {
             var t = this.getAttribute('data-src');
