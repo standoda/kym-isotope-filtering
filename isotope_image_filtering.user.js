@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.1
+// @version      0.2
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -53,8 +53,8 @@ function filterPictures(laidOutItems) {
 
 function updateFilter() {
     if (filterSwitch) {
-        $p.isotope({ filter: ':not(.filtered)' + (filterNsfw ? '.item:has(a:has(img[class != img-nsfw]))' : '')
-                    + (filterSpoilers ? '.item:has(a:has(img[class != img-spoiler]))' : '')});
+        $p.isotope({ filter: ':not(.filtered)' + (filterNsfw ? ':not(.item:has(a:has(img[class ~= img-nsfw])))' : '')
+                    + (filterSpoilers ? ':not(.item:has(a:has(img[class ~= img-spoiler])))' : '')});
     } else {
         $p.isotope({ filter: '*' });
     }
