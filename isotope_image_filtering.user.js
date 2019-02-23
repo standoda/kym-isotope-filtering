@@ -92,7 +92,10 @@ function setupInfScroll(iso) {
 
     $("#photo_gallery.infinite").on( 'append.infiniteScroll', function( event, response, path, items ) {
         filterPictures(items);
-        $(items).find('img').unveil();
+        $(items).find('img').each( function() {
+            var t = this.getAttribute('data-src');
+            this.setAttribute("src", t);
+        });
         updateFilter();
     });
     // first filtering for items that were already loaded
