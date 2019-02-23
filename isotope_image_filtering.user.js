@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.2
+// @version      0.3
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -79,6 +79,7 @@ function setupInfScroll(iso) {
         path: function() {
             var pageNumber = this.loadCount + 2;
             var e = $("#infinite-scroll-wrapper .next_page").attr("href");
+            if (e == null) return null;
             e = e.replace(/page=\d+/, "page=" + pageNumber);
             e = e.replace(/page\/\d+/, "page/" + pageNumber);
             return e;
