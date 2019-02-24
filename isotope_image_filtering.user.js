@@ -111,50 +111,52 @@ function setupInfScroll(iso) {
 }
 
 // workaround for loading js because @require doesn't work with @grant
-var script1 = document.createElement('script');
-script1.onload = function () {
-    var iso = setupIsotope();
+function initAll() {
+    var script1 = document.createElement('script');
+    script1.onload = function () {
+        var iso = setupIsotope();
 
-    var script2 = document.createElement('script');
-    script2.onload = function () {
-        setupInfScroll(iso);
+        var script2 = document.createElement('script');
+        script2.onload = function () {
+            setupInfScroll(iso);
+        };
+        script2.src = "https://unpkg.com/infinite-scroll@3/dist/infinite-scroll.pkgd.min.js";
+        document.head.appendChild(script2);
+
     };
-    script2.src = "https://unpkg.com/infinite-scroll@3/dist/infinite-scroll.pkgd.min.js";
-    document.head.appendChild(script2);
+    script1.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
+    document.head.appendChild(script1);
 
-};
-script1.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
-document.head.appendChild(script1);
+    var nyanLoad = '<div id="infscr-loading" style="display: none;"><img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif"><div><em>Loading moar...</em></div></div>';
+    $p.append(nyanLoad);
 
-var nyanLoad = '<div id="infscr-loading" style="display: none;"><img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif"><div><em>Loading moar...</em></div></div>';
-$p.append(nyanLoad);
-
-// load colorbox on click
-$("body").off("photos-loaded", "#photo_gallery");
-$("#photo_gallery").on("click", "a.photo", function() {
-    return $(this).colorbox({
-        slideshow: false,
-        slideshowSpeed: 5e3,
-        href: $(this).data("colorbox-url"),
-        current: "{current}|{total}",
-        opacity: 1,
-        scrolling: !1,
-        transition: "none",
-        onOpen: function() {
-            return $("#colorbox").hide()
-        },
-        onComplete: function() {
-            return $("#colorbox").fadeIn(200),
-                parse_favorites(),
-                parse_thumbs(),
-                parsePins(),
-                unsafeWindow.photoColorboxed()
-        },
-        onClosed: function() {
-            return unsafeWindow.photoColorboxed(!0)
-        }
-    })
-});
+    // load colorbox on click
+    $("body").off("photos-loaded", "#photo_gallery");
+    $("#photo_gallery").on("click", "a.photo", function() {
+        return $(this).colorbox({
+            slideshow: false,
+            slideshowSpeed: 5e3,
+            href: $(this).data("colorbox-url"),
+            current: "{current}|{total}",
+            opacity: 1,
+            scrolling: !1,
+            transition: "none",
+            onOpen: function() {
+                return $("#colorbox").hide()
+            },
+            onComplete: function() {
+                return $("#colorbox").fadeIn(200),
+                    parse_favorites(),
+                    parse_thumbs(),
+                    parsePins(),
+                    unsafeWindow.photoColorboxed()
+            },
+            onClosed: function() {
+                return unsafeWindow.photoColorboxed(!0)
+            }
+        })
+    });
+}
 
 function appendMenu() {
     var overlay = `
@@ -277,7 +279,10 @@ function appendMenu() {
     });
 }
 
-appendMenu();
+if ($p.length) {
+    initAll();
+    appendMenu();
+}
 
 // append a button to entry pages to switch the filter on/off
 var entryHeader = $('#maru .rel.c');
