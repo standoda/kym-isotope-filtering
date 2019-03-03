@@ -17,7 +17,7 @@
 
 var entryFilter = GM_getValue('entryFilter', '');
 var userFilter = GM_getValue('userFilter', '');
-var filterSwitch = GM_getValue('filterSwitch', false);
+var filterSwitch = GM_getValue('filterSwitch', true);
 var filterNsfw = GM_getValue('filterNsfw', false);
 var filterSpoilers = GM_getValue('filterSpoilers', false);
 var filteredCount = 0;
