@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.4
+// @version      0.5
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -62,7 +62,8 @@ function updateFilter() {
 
 function setupIsotope() {
     $p.masonry('destroy');
-    $p.infinitescroll('destroy');
+    $p.infiniteScroll('destroy');
+    $p.off('append.infiniteScroll');
 
     $p.isotope({
         // options
@@ -91,7 +92,7 @@ function setupInfScroll(iso) {
         history: false,
     });
 
-    $("#photo_gallery.infinite").on( 'append.infiniteScroll', function( event, response, path, items ) {
+    $p.on( 'append.infiniteScroll', function( event, response, path, items ) {
         // terminate infinite scroll if we reached the end
         if (!items.length) {
             var endMsg = '<p class="infinite-scroll-last" style="text-align: center;font-size: 18px; margin-top: 20px;">No more content</p>'
@@ -112,20 +113,13 @@ function setupInfScroll(iso) {
 
 // workaround for loading js because @require doesn't work with @grant
 function initAll() {
-    var script1 = document.createElement('script');
-    script1.onload = function () {
+    var script = document.createElement('script');
+    script.onload = function () {
         var iso = setupIsotope();
-
-        var script2 = document.createElement('script');
-        script2.onload = function () {
-            setupInfScroll(iso);
-        };
-        script2.src = "https://unpkg.com/infinite-scroll@3/dist/infinite-scroll.pkgd.min.js";
-        document.head.appendChild(script2);
-
+        setupInfScroll(iso);
     };
-    script1.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
-    document.head.appendChild(script1);
+    script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
+    document.head.appendChild(script);
 
     var nyanLoad = '<div id="infscr-loading" style="display: none;"><img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif"><div><em>Loading moar...</em></div></div>';
     $p.append(nyanLoad);
