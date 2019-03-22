@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.5
+// @version      0.6
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -62,8 +62,6 @@ function updateFilter() {
 
 function setupIsotope() {
     $p.masonry('destroy');
-    $p.infiniteScroll('destroy');
-    $p.off('append.infiniteScroll');
 
     $p.isotope({
         // options
@@ -76,15 +74,14 @@ function setupIsotope() {
 }
 
 function setupInfScroll(iso) {
+    const nextPage = '#infinite-scroll-wrapper .next_page';
+    // don't change the inf scrolling if gallery has no other pages
+    if (!$(nextPage).length) return;
+
+    $p.infiniteScroll('destroy');
+    $p.off('append.infiniteScroll');
     $p.infiniteScroll({
-        path: function() {
-            var pageNumber = this.loadCount + 2;
-            var e = $("#infinite-scroll-wrapper .next_page").attr("href");
-            if (e == null) return null;
-            e = e.replace(/page=\d+/, "page=" + pageNumber);
-            e = e.replace(/page\/\d+/, "page/" + pageNumber);
-            return e;
-        },
+        path: nextPage,
         append: '#infinite-scroll-wrapper .item',
         scrollThreshold: 30,
         outlayer: iso,
@@ -117,6 +114,9 @@ function initAll() {
     script.onload = function () {
         var iso = setupIsotope();
         setupInfScroll(iso);
+        // first filtering for items that were already loaded
+        filterPictures(iso.getItemElements());
+        updateFilter();
     };
     script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
     document.head.appendChild(script);
