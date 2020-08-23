@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.6
+// @version      0.7
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -20,9 +20,11 @@ var userFilter = GM_getValue('userFilter', '');
 var filterSwitch = GM_getValue('filterSwitch', true);
 var filterNsfw = GM_getValue('filterNsfw', false);
 var filterSpoilers = GM_getValue('filterSpoilers', false);
+var unveilNsfw = GM_getValue('unveilNsfw', false);
+var unveilSpoilers = GM_getValue('unveilSpoilers', false);
 var filteredCount = 0;
 const U = 'Uploaded by';
-var isNotEntry = !Boolean($('#section_header h1').find('a').length);
+var isNotEntry = !$('#section_header h1').find('a').length;
 var $p = $('#photo_gallery');
 console.log(entryFilter);
 console.log(userFilter);
@@ -34,10 +36,8 @@ function filterPictures(laidOutItems) {
             var item = element.find('a');
             var entry = item.attr('href').replace(/^[^-]*-/, '');
             var user = item.find('.c').text();
-            user = user.slice(user.indexOf(U) + U.length);
-            user = user.substring(1, user.length -1).replace(/\n/g, ' ');
+            user = user.slice(user.indexOf(U) + U.length).trim().replace(/\n/g, ' ');
 
-            //console.log(user);
             if (entry) {
                 if (entryFilter.indexOf('|' + entry + '|') >= 0 && isNotEntry ||
                     userFilter.indexOf('|' + user + '|') >= 0)
@@ -48,7 +48,6 @@ function filterPictures(laidOutItems) {
             }
         }
     });
-    //if (needUpdate)
 }
 
 function updateFilter() {
@@ -58,6 +57,21 @@ function updateFilter() {
     } else {
         $p.isotope({ filter: '*' });
     }
+}
+
+$.fn.unveil = function() {
+    $(this).each( function() {
+        var imgClasses = this.classList;
+        var isNsfw = imgClasses.contains('img-nsfw');
+        var isSpoiler = imgClasses.contains('img-spoiler');
+
+        if ((isNsfw && unveilNsfw) || (isSpoiler && unveilSpoilers)) {
+            this.src = this.getAttribute('data-original-image-url');
+            this.height = this.getAttribute('data-original-height');
+        } else {
+            this.src = this.getAttribute('data-src');
+        }
+    });
 }
 
 function setupIsotope() {
@@ -97,15 +111,9 @@ function setupInfScroll(iso) {
             $p.infiniteScroll('destroy');
         }
         filterPictures(items);
-        $(items).find('img').each( function() {
-            var t = this.getAttribute('data-src');
-            this.setAttribute("src", t);
-        });
+        $(items).find('img').unveil();
         updateFilter();
     });
-    // first filtering for items that were already loaded
-    filterPictures(iso.getItemElements());
-    updateFilter();
 }
 
 // workaround for loading js because @require doesn't work with @grant
@@ -115,7 +123,11 @@ function initAll() {
         var iso = setupIsotope();
         setupInfScroll(iso);
         // first filtering for items that were already loaded
-        filterPictures(iso.getItemElements());
+        var firstItems = iso.getItemElements();
+        filterPictures(firstItems);
+        var firstImages = $(firstItems).find('img')
+        firstImages.off("unveil");
+        firstImages.unveil();
         updateFilter();
     };
     script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
@@ -155,7 +167,7 @@ function initAll() {
 function appendMenu() {
     var overlay = `
         <style>
-        .combo-wrapper {
+        .combo-wrapper, #ctoolbar {
             display:none !important;
         }
         .open-button {
@@ -236,9 +248,14 @@ function appendMenu() {
             <label for="cbox_filterswitch" style="font-size: 14px;">Filter On/Off</label>
             <br>
             <input id="cbox_filternsfw" type="checkbox" style="width: 16px; height: 16px; margin-bottom: 15px;">
-            <label for="cbox_filternsfw" style="font-size: 14px;">Filter nsfw</label>
+            <label for="cbox_filternsfw" style="font-size: 14px;">Filter NSFW</label>
             <input id="cbox_filterspoiler" type="checkbox" style="width: 16px; height: 16px; margin-bottom: 15px; margin-left: 15px">
             <label for="cbox_filterspoiler" style="font-size: 14px;">Filter spoilers</label>
+            <hr>
+            <input id="cbox_unveilnsfw" type="checkbox" style="width: 16px; height: 16px; margin-bottom: 15px;">
+            <label for="cbox_unveilnsfw" style="font-size: 14px;">Unveil NSFW</label>
+            <input id="cbox_unveilspoilers" type="checkbox" style="width: 16px; height: 16px; margin-bottom: 15px; margin-left: 8px">
+            <label for="cbox_unveilspoilers" style="font-size: 14px;">Unveil spoilers</label>
             <button id = "save_filters" class="btn">✓ Save filters</button>
             </div>
 
@@ -273,6 +290,18 @@ function appendMenu() {
         GM_setValue('filterSwitch', this.checked);
         filterSwitch = this.checked;
         updateFilter();
+    });
+
+    $('#cbox_unveilnsfw').prop("checked", unveilNsfw);
+    $('#cbox_unveilnsfw').change(function() {
+        GM_setValue('unveilNsfw', this.checked);
+        unveilNsfw = this.checked;
+    });
+
+    $('#cbox_unveilspoilers').prop("checked", unveilSpoilers);
+    $('#cbox_unveilspoilers').change(function() {
+        GM_setValue('unveilSpoilers', this.checked);
+        unveilSpoilers = this.checked;
     });
 }
 
