@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.7
+// @version      0.8
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -22,7 +22,6 @@ var filterNsfw = GM_getValue('filterNsfw', false);
 var filterSpoilers = GM_getValue('filterSpoilers', false);
 var unveilNsfw = GM_getValue('unveilNsfw', false);
 var unveilSpoilers = GM_getValue('unveilSpoilers', false);
-var filteredCount = 0;
 const U = 'Uploaded by';
 var isNotEntry = !$('#section_header h1').find('a').length;
 var $p = $('#photo_gallery');
@@ -34,20 +33,29 @@ function filterPictures(laidOutItems) {
         var element = this.element ? $(this.element) : $(this);
         if (element.hasClass('item')) {
             var item = element.find('a');
-            var entry = item.attr('href').replace(/^[^-]*-/, '');
-            var user = item.find('.c').text();
-            user = user.slice(user.indexOf(U) + U.length).trim().replace(/\n/g, ' ');
+            var entry = entryFromItem(item)
+            var user = userFromItem(item)
 
             if (entry) {
                 if (entryFilter.indexOf('|' + entry + '|') >= 0 && isNotEntry ||
                     userFilter.indexOf('|' + user + '|') >= 0)
                 {
                     this.classList.add("filtered");
-                    ++filteredCount;
+                } else {
+                    this.classList.remove("filtered");
                 }
             }
         }
     });
+}
+
+function entryFromItem(item) {
+    return item.attr('href').replace(/^[^-]*-/, '');
+}
+
+function userFromItem(item) {
+    var user = item.find('.c').text();
+    return user.slice(user.indexOf(U) + U.length).trim().replace(/\n/g, ' ');
 }
 
 function updateFilter() {
@@ -151,6 +159,7 @@ function initAll() {
                 return $("#colorbox").hide()
             },
             onComplete: function() {
+                appendColorboxButtons($(this));
                 return $("#colorbox").fadeIn(200),
                     parse_favorites(),
                     parse_thumbs(),
@@ -267,8 +276,11 @@ function appendMenu() {
     $('#user_filter').val(userFilter);
 
     $('#save_filters').click(function() {
-        GM_setValue('entryFilter', $('#entry_filter').val());
-        GM_setValue('userFilter', $('#user_filter').val());
+        entryFilter = $('#entry_filter').val()
+        userFilter = $('#user_filter').val()
+        GM_setValue('entryFilter', entryFilter);
+        GM_setValue('userFilter', userFilter);
+        globalFilterReload()
     });
 
     $('#cbox_filternsfw').prop("checked", filterNsfw);
@@ -310,18 +322,32 @@ if ($p.length) {
     appendMenu();
 }
 
-// append a button to entry pages to switch the filter on/off
-var entryHeader = $('#maru .rel.c');
-if (entryHeader.length){
+function globalFilterReload() {
+    if ($p.data('isotope')) {
+        $('#entry_filter').val(entryFilter);
+        $('#user_filter').val(userFilter);
+        var items = $p.data('isotope').getItemElements();
+        filterPictures(items);
+        updateFilter();
+    }
+}
+
+const buttonStatus = {
+    addEntry    : "Filter entry",
+    removeEntry : "Unfilter entry",
+    addUser     : "Filter user",
+    removeUser  : "Unfilter user"
+};
+
+function entryBlockButton(entryToFilter) {
     // check if entry was filtered already
-    var entryToFilter = '|' + /[^/]*$/.exec(window.location.href)[0] + '|';
     var entryIndex = entryFilter.indexOf(entryToFilter);
     var entryIsFiltered = entryIndex >= 0;
-    var entryBlockButton = $('<a/>', {
+    return $('<a/>', {
         'id':'filterbtn',
         'href': 'javascript:;',
         'class':'red button',
-        'text': entryIsFiltered ? 'Remove from Filter' : 'Add to Filter',
+        'text': entryIsFiltered ? buttonStatus.removeEntry : buttonStatus.addEntry,
         'style': 'margin-left: 10px'
     }).on('click', function(){
         entryFilter = GM_getValue('entryFilter', '');
@@ -330,28 +356,25 @@ if (entryHeader.length){
             entryFilter = entryFilter.substr(0, entryIndex + 1) +
                           entryFilter.substr(entryIndex + entryToFilter.length);
             if (entryFilter.length == 1) entryFilter = '';
-            $(this).text('Add to Filter');
+            $(this).text(buttonStatus.addEntry);
         } else {
             entryFilter += entryFilter.slice(-1) == '|' ? entryToFilter.substring(1) : entryToFilter;
-            $(this).text('Remove from Filter');
+            $(this).text(buttonStatus.removeEntry);
         }
         GM_setValue('entryFilter', entryFilter);
+        globalFilterReload()
     });
-    entryHeader.prepend(entryBlockButton);
 }
 
-// append a button to user pages as well
-var userHeader = $('#profile_info');
-if (userHeader.length) {
+function userBlockButton(userToFilter) {
     // check if user was filtered already
-    var userToFilter = '|' + $('#profile_bio').find('h1').text() + '|';
     var userIndex = userFilter.indexOf(userToFilter);
     var userIsFiltered = userIndex >= 0;
-    var userBlockButton = $('<a/>', {
+    return $('<a/>', {
         'id':'filterbtn',
         'href': 'javascript:;',
         'class':'red button',
-        'text': userIsFiltered ? 'Remove from Filter' : 'Add to Filter',
+        'text': userIsFiltered ? buttonStatus.removeUser : buttonStatus.addUser,
         'style': 'margin-left: 24px'
     }).on('click', function() {
         userFilter = GM_getValue('userFilter', '');
@@ -360,13 +383,39 @@ if (userHeader.length) {
             userFilter = userFilter.substr(0, userIndex + 1) +
                          userFilter.substr(userIndex + userToFilter.length);
             if (userFilter.length == 1) userFilter = '';
-            $(this).text('Add to Filter');
+            $(this).text(buttonStatus.addUser);
         } else {
             userFilter += userFilter.slice(-1) == '|' ? userToFilter.substring(1) : userToFilter;
-            $(this).text('Remove from Filter');
+            $(this).text(buttonStatus.removeUser);
         }
         GM_setValue('userFilter', userFilter);
+        globalFilterReload()
     });
-    userHeader.prepend(userBlockButton);
 }
 
+// append a button to entry pages to switch the filter on/off
+var entryHeader = $('#maru .rel.c');
+if (entryHeader.length){
+    var entryToFilter = '|' + /[^/]*$/.exec(window.location.href)[0] + '|';
+    entryHeader.prepend(entryBlockButton(entryToFilter));
+}
+
+// append a button to user pages as well
+var userHeader = $('#profile_info');
+if (userHeader.length) {
+    var userToFilter = '|' + $('#profile_bio').find('h1').text() + '|';
+    userHeader.prepend(userBlockButton(userToFilter));
+}
+
+// buttons on colorbox overlay
+function appendColorboxButtons(item) {
+    entryToFilter = '|' + entryFromItem(item) + '|';
+    userToFilter = '|' + userFromItem(item) + '|';
+    var buttonsBlock = $('#cboxLoadedContent .r-top-block');
+    buttonsBlock.append('<hr style="margin-bottom: 1em;">');
+    buttonsBlock.append(entryBlockButton(entryToFilter));
+
+    if (userToFilter != "||") {
+        buttonsBlock.append(userBlockButton(userToFilter));
+    }
+}
