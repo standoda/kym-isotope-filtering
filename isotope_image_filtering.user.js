@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      0.9
+// @version      1.0
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -67,7 +67,7 @@ function updateFilter() {
     }
 }
 
-$.fn.unveil = function() {
+$.fn.customUnveil = function() {
     $(this).each( function() {
         var imgClasses = this.classList;
         var isNsfw = imgClasses.contains('img-nsfw');
@@ -102,24 +102,24 @@ function setupInfScroll(iso) {
 
     $p.infiniteScroll('destroy');
     $p.off('append.infiniteScroll');
+    $p.off('last.infiniteScroll');
     $p.infiniteScroll({
         path: nextPage,
         append: '#infinite-scroll-wrapper .item',
         scrollThreshold: 30,
         outlayer: iso,
-        status: '#infscr-loading',
+        status: '#page-load-status',
         history: false,
     });
 
     $p.on( 'append.infiniteScroll', function( event, response, path, items ) {
         // terminate infinite scroll if we reached the end
         if (!items.length) {
-            var endMsg = '<p class="infinite-scroll-last" style="text-align: center;font-size: 18px; margin-top: 20px;">No more content</p>'
-            $('#infinite-scroll-wrapper').append(endMsg);
             $p.infiniteScroll('destroy');
+            $('#page-load-status, .infinite-scroll-last').show();
         }
         filterPictures(items);
-        $(items).find('img').unveil();
+        $(items).find('img').customUnveil();
         updateFilter();
     });
 }
@@ -135,14 +135,20 @@ function initAll() {
         filterPictures(firstItems);
         var firstImages = $(firstItems).find('img')
         firstImages.off("unveil");
-        firstImages.unveil();
+        firstImages.customUnveil();
         updateFilter();
     };
     script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
     document.head.appendChild(script);
 
-    var nyanLoad = '<div id="infscr-loading" style="display: none;"><img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif"><div><em>Loading moar...</em></div></div>';
-    $p.append(nyanLoad);
+    var pageStatus = `
+        <div id="page-load-status" style="display: none;">
+          <div id="infscr-loading" class="infinite-scroll-request">
+            <img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif" style="display: block;"><em>Loading moar...</em>
+          </div>
+          <p class="infinite-scroll-last" style="text-align: center; font-size: 18px; margin-top: 20px;">No more content</p>
+        </div>`;
+    $p.after(pageStatus);
 
     // load colorbox on click
     $("body").off("photos-loaded", "#photo_gallery");
@@ -269,7 +275,7 @@ function appendMenu() {
             </div>
 
             <button type="button" class="btn cancel" onclick='document.getElementById("myForm").style.display = "none";'>Close</button>
-        </div>`
+        </div>`;
 
     $('body').append(overlay);
     $('#entry_filter').val(entryFilter);
@@ -280,7 +286,7 @@ function appendMenu() {
         userFilter = $('#user_filter').val()
         GM_setValue('entryFilter', entryFilter);
         GM_setValue('userFilter', userFilter);
-        globalFilterReload()
+        globalFilterReload();
     });
 
     $('#cbox_filternsfw').prop("checked", filterNsfw);
@@ -360,7 +366,7 @@ function entryBlockButton(entryToFilter) {
             $(this).text(buttonStatus.removeEntry);
         }
         GM_setValue('entryFilter', entryFilter);
-        globalFilterReload()
+        globalFilterReload();
     });
 }
 
@@ -385,7 +391,7 @@ function userBlockButton(userToFilter) {
             $(this).text(buttonStatus.removeUser);
         }
         GM_setValue('userFilter', userFilter);
-        globalFilterReload()
+        globalFilterReload();
     });
 }
 
