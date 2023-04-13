@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      1.0
+// @version      1.1
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -169,7 +169,6 @@ function initAll() {
                 return $("#colorbox").fadeIn(200),
                     parse_favorites(),
                     parse_thumbs(),
-                    parsePins(),
                     unsafeWindow.photoColorboxed()
             },
             onClosed: function() {
