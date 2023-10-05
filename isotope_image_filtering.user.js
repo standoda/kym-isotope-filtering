@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      1.1
+// @version      1.2
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -22,58 +22,67 @@ var filterNsfw = GM_getValue('filterNsfw', false);
 var filterSpoilers = GM_getValue('filterSpoilers', false);
 var unveilNsfw = GM_getValue('unveilNsfw', false);
 var unveilSpoilers = GM_getValue('unveilSpoilers', false);
-const U = 'Uploaded by';
-var isNotEntry = !$('#section_header h1').find('a').length;
-var $p = $('#photo_gallery');
-console.log(entryFilter);
-console.log(userFilter);
+var isNotEntryPage = !$('#section_header h1').find('a').length;
+var $gallery = $('#photo_gallery');
 
-function filterPictures(laidOutItems) {
-    $(laidOutItems).each( function() {
-        var element = this.element ? $(this.element) : $(this);
-        if (element.hasClass('item')) {
-            var item = element.find('a');
-            var entry = entryFromItem(item)
-            var user = userFromItem(item)
+function filterItems(items) {
+    items.forEach(function(item) {
+        if (item.classList.contains('item')) {
+            var link = item.querySelector('a');
+            var entry = entryFromItem(link);
+            var user = userFromItem(link);
+            var img_classes = item.querySelector('img').classList;
 
-            if (entry) {
-                if (entryFilter.indexOf('|' + entry + '|') >= 0 && isNotEntry ||
-                    userFilter.indexOf('|' + user + '|') >= 0)
-                {
-                    this.classList.add("filtered");
-                } else {
-                    this.classList.remove("filtered");
-                }
+            if (isEntryHidden(entry) || isUserHidden(user) || isImageClassHidden(img_classes)) {
+                item.classList.add("hide");
+            } else {
+                item.classList.remove("hide");
             }
         }
     });
 }
 
-function entryFromItem(item) {
-    return item.attr('href').replace(/^[^-]*-/, '');
+function entryFromItem(link) {
+    return link.getAttribute('href').replace(/^[^-]*-/, '');
 }
 
-function userFromItem(item) {
-    var user = item.find('.c').text();
-    return user.slice(user.indexOf(U) + U.length).trim().replace(/\n/g, ' ');
+function userFromItem(link) {
+    var info = link.querySelector('.c').textContent;
+    return info.match(/(?<=Uploaded by)[\s\S]*/)[0].trim().replace(/\n/g, ' ');
+}
+
+function isEntryHidden(entry) {
+    return entryFilter.indexOf('|' + entry + '|') >= 0 && isNotEntryPage;
+}
+
+function isUserHidden(user) {
+    return userFilter.indexOf('|' + user + '|') >= 0;
+}
+
+function isImageClassHidden(img_classes) {
+    return (filterNsfw && img_classes.contains('img-nsfw')) ||
+        (filterSpoilers && img_classes.contains('img-spoiler'));
 }
 
 function updateFilter() {
     if (filterSwitch) {
-        $p.isotope({ filter: ':not(.filtered)' + (filterNsfw ? ':not(:has(a > .img-nsfw))' : '')
-                    + (filterSpoilers ? ':not(:has(a > .img-spoiler))' : '')});
+        $gallery.isotope({ filter: ':not(.hide)' });
     } else {
-        $p.isotope({ filter: '*' });
+        $gallery.isotope({ filter: '*' });
     }
 }
 
 $.fn.customUnveil = function() {
-    $(this).each( function() {
+    this.each( function() {
         var imgClasses = this.classList;
         var isNsfw = imgClasses.contains('img-nsfw');
         var isSpoiler = imgClasses.contains('img-spoiler');
 
-        if ((isNsfw && unveilNsfw) || (isSpoiler && unveilSpoilers)) {
+        if (
+            (isNsfw && !isSpoiler && unveilNsfw) ||
+            (!isNsfw && isSpoiler && unveilSpoilers) ||
+            (isSpoiler && unveilNsfw && unveilSpoilers)
+        ) {
             this.src = this.getAttribute('data-original-image-url');
             this.height = this.getAttribute('data-original-height');
         } else {
@@ -83,16 +92,16 @@ $.fn.customUnveil = function() {
 }
 
 function setupIsotope() {
-    $p.masonry('destroy');
+    $gallery.masonry('destroy');
 
-    $p.isotope({
+    $gallery.isotope({
         // options
         itemSelector: '.item',
         // nicer reveal transition
         visibleStyle: { transform: 'translateY(0)', opacity: 1 },
         hiddenStyle: { transform: 'translateY(100px)', opacity: 0 },
     });
-    return $p.data('isotope');
+    return $gallery.data('isotope');
 }
 
 function setupInfScroll(iso) {
@@ -100,10 +109,10 @@ function setupInfScroll(iso) {
     // don't change the inf scrolling if gallery has no other pages
     if (!$(nextPage).length) return;
 
-    $p.infiniteScroll('destroy');
-    $p.off('append.infiniteScroll');
-    $p.off('last.infiniteScroll');
-    $p.infiniteScroll({
+    $gallery.infiniteScroll('destroy');
+    $gallery.off('append.infiniteScroll');
+    $gallery.off('last.infiniteScroll');
+    $gallery.infiniteScroll({
         path: nextPage,
         append: '#infinite-scroll-wrapper .item',
         scrollThreshold: 30,
@@ -112,31 +121,76 @@ function setupInfScroll(iso) {
         history: false,
     });
 
-    $p.on( 'append.infiniteScroll', function( event, response, path, items ) {
+    $gallery.on('append.infiniteScroll', function( event, response, path, items) {
         // terminate infinite scroll if we reached the end
         if (!items.length) {
-            $p.infiniteScroll('destroy');
+            $gallery.infiniteScroll('destroy');
             $('#page-load-status, .infinite-scroll-last').show();
         }
-        filterPictures(items);
+        filterItems(items);
+        $(items).find("a.photo").each(function() {
+            setupColorbox(this);
+        })
         $(items).find('img').customUnveil();
         updateFilter();
     });
 }
 
-// workaround for loading js because @require doesn't work with @grant
+function setupColorbox(item) {
+    if (filterSwitch && item.parentElement.classList.contains('hide')) {
+        // make it possible to also load colorbox on previously hidden items, if clicked after unhidden
+        item.addEventListener('click', function () {
+            loadColorbox(item);
+        });
+    } else {
+        loadColorbox(item);
+    }
+}
+
+function loadColorbox(item) {
+    $(item).colorbox({
+        slideshow: false,
+        slideshowSpeed: 5e3,
+        href: $(item).data("colorbox-url"),
+        current: "{current}|{total}",
+        opacity: 1,
+        scrolling: !1,
+        transition: "none",
+        onOpen: function() {
+            return $("#colorbox").hide()
+        },
+        onComplete: function() {
+            appendColorboxButtons(this);
+            return $("#colorbox").fadeIn(200),
+                parse_favorites(),
+                parse_thumbs(),
+                unsafeWindow.photoColorboxed()
+        },
+        onClosed: function() {
+            return unsafeWindow.photoColorboxed(!0)
+        }
+    })
+}
+
 function initAll() {
+    // workaround for loading js because @require doesn't work with @grant
     var script = document.createElement('script');
     script.onload = function () {
         var iso = setupIsotope();
         setupInfScroll(iso);
         // first filtering for items that were already loaded
         var firstItems = iso.getItemElements();
-        filterPictures(firstItems);
+        filterItems(firstItems);
         var firstImages = $(firstItems).find('img')
         firstImages.off("unveil");
         firstImages.customUnveil();
         updateFilter();
+        // load custom colorbox
+        $("body").off("photos-loaded", "#photo_gallery");
+        $.colorbox.remove();
+        $("#photo_gallery").find("a.photo").each(function() {
+            setupColorbox(this);
+        })
     };
     script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
     document.head.appendChild(script);
@@ -148,34 +202,10 @@ function initAll() {
           </div>
           <p class="infinite-scroll-last" style="text-align: center; font-size: 18px; margin-top: 20px;">No more content</p>
         </div>`;
-    $p.after(pageStatus);
+    $gallery.after(pageStatus);
 
-    // load colorbox on click
-    $("body").off("photos-loaded", "#photo_gallery");
-    $("#photo_gallery").on("click", "a.photo", function() {
-        return $(this).colorbox({
-            slideshow: false,
-            slideshowSpeed: 5e3,
-            href: $(this).data("colorbox-url"),
-            current: "{current}|{total}",
-            opacity: 1,
-            scrolling: !1,
-            transition: "none",
-            onOpen: function() {
-                return $("#colorbox").hide()
-            },
-            onComplete: function() {
-                appendColorboxButtons($(this));
-                return $("#colorbox").fadeIn(200),
-                    parse_favorites(),
-                    parse_thumbs(),
-                    unsafeWindow.photoColorboxed()
-            },
-            onClosed: function() {
-                return unsafeWindow.photoColorboxed(!0)
-            }
-        })
-    });
+    // prevent autoscroll to avoid triggering the next page too soon
+    history.scrollRestoration = "manual"
 }
 
 function appendMenu() {
@@ -292,14 +322,14 @@ function appendMenu() {
     $('#cbox_filternsfw').change(function() {
         GM_setValue('filterNsfw', this.checked);
         filterNsfw = this.checked;
-        updateFilter();
+        globalFilterReload();
     });
 
     $('#cbox_filterspoiler').prop("checked", filterSpoilers);
     $('#cbox_filterspoiler').change(function() {
         GM_setValue('filterSpoilers', this.checked);
         filterSpoilers = this.checked;
-        updateFilter();
+        globalFilterReload();
     });
 
     $('#cbox_filterswitch').prop("checked", filterSwitch);
@@ -322,17 +352,17 @@ function appendMenu() {
     });
 }
 
-if ($p.length) {
+if ($gallery.length) {
     initAll();
     appendMenu();
 }
 
 function globalFilterReload() {
-    if ($p.data('isotope')) {
+    if ($gallery.data('isotope')) {
         $('#entry_filter').val(entryFilter);
         $('#user_filter').val(userFilter);
-        var items = $p.data('isotope').getItemElements();
-        filterPictures(items);
+        var items = $gallery.data('isotope').getItemElements();
+        filterItems(items);
         updateFilter();
     }
 }
