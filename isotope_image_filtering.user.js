@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      1.2
+// @version      1.3
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
@@ -47,8 +47,10 @@ function entryFromItem(link) {
 }
 
 function userFromItem(link) {
-    var info = link.querySelector('.c').textContent;
-    return info.match(/(?<=Uploaded by)[\s\S]*/)[0].trim().replace(/\n/g, ' ');
+    var info = link.querySelector('.c');
+    if (!info) return '';
+
+    return info.textContent.match(/(?<=Uploaded by)[\s\S]*/)[0].trim().replace(/\n/g, ' ');
 }
 
 function isEntryHidden(entry) {
