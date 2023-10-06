@@ -2,7 +2,7 @@
 // @name         Isotope Filtering
 // @version      1.3
 // @description  Achieve filtering by replacing masonry with isotope
-// @author       e
+// @author       e, NeatCrownn
 // @match        https://knowyourmeme.com/*photos*
 // @match        https://knowyourmeme.com/memes/*
 // @match        https://knowyourmeme.com/users/*
@@ -74,22 +74,77 @@ function updateFilter() {
     }
 }
 
+$(":root").append(`
+<style>
+    :root {
+        --nsfw-color: #9f1c27;
+        --spoiler-color: #13133e;
+        --nsfw-spoiler-color: #323232;
+    }
+
+    .unveiled.nsfw-tag {
+        background-color: var(--nsfw-color);
+    }
+    .unveiled.spoiler-tag {
+        background-color: var(--spoiler-color);
+    }
+    .unveiled.nsfw-tag.spoiler-tag {
+        background-color: var(--nsfw-spoiler-color);
+    }
+    .unveiled {
+        width:100%;
+        color: #FFFFFF;
+        text-align: center;
+        font-family: Roboto Slab;
+        font-weight: bold;
+        font-size: 12px;
+        letter-spacing: 3px;
+        padding: 4px 0 0 0;
+    }
+    .unveiled ~ img {
+        border: 3px solid;
+        box-sizing: border-box;
+    }
+
+    .img-nsfw {
+        border-color: var(--nsfw-color) !important;
+    }
+    .img-spoiler {
+        border-color: var(--spoiler-color) !important;
+    }
+    .img-nsfw.img-spoiler {
+        border-color: var(--nsfw-spoiler-color) !important;
+    }
+</style>
+`);
+
 $.fn.customUnveil = function() {
     this.each( function() {
         var imgClasses = this.classList;
         var isNsfw = imgClasses.contains('img-nsfw');
         var isSpoiler = imgClasses.contains('img-spoiler');
 
-        if (
-            (isNsfw && !isSpoiler && unveilNsfw) ||
-            (!isNsfw && isSpoiler && unveilSpoilers) ||
-            (isSpoiler && unveilNsfw && unveilSpoilers)
-        ) {
-            this.src = this.getAttribute('data-original-image-url');
-            this.height = this.getAttribute('data-original-height');
-        } else {
-            this.src = this.getAttribute('data-src');
-        }
+        (function(item) {
+            if (isNsfw && isSpoiler && unveilNsfw && unveilSpoilers) {
+                item.src = item.getAttribute('data-original-image-url');
+                item.height = item.getAttribute('data-original-height');
+                $(item).parent().prepend(`<div class='unveiled nsfw-tag spoiler-tag'>NSFW | SPOILER</div>`);
+                return;
+            }
+            if (isSpoiler && unveilSpoilers) {
+                item.src = item.getAttribute('data-original-image-url');
+                item.height = item.getAttribute('data-original-height');
+                $(item).parent().prepend(`<div class='unveiled spoiler-tag'>SPOILER</div>`);
+                return;
+            }
+            if (isNsfw && unveilNsfw) {
+                item.src = item.getAttribute('data-original-image-url');
+                item.height = item.getAttribute('data-original-height');
+                $(item).parent().prepend(`<div class='unveiled nsfw-tag'>NSFW</div>`);
+                return;
+            }
+            item.src = item.getAttribute('data-src');
+        })(this);
     });
 }
 
