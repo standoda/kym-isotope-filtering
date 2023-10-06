@@ -7,7 +7,6 @@
 // @match        https://knowyourmeme.com/memes/*
 // @match        https://knowyourmeme.com/users/*
 // @match        https://knowyourmeme.com/search*
-// @exclude      https://knowyourmeme.com/users/*/photos
 // @run-at       document-end
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -409,11 +408,6 @@ function appendMenu() {
     });
 }
 
-if ($gallery.length) {
-    initAll();
-    appendMenu();
-}
-
 function globalFilterReload() {
     if ($gallery.data('isotope')) {
         $('#entry_filter').val(entryFilter);
@@ -512,4 +506,38 @@ function appendColorboxButtons(item) {
     if (userToFilter != "||") {
         div.append(userBlockButton(userToFilter));
     }
+}
+
+// adds a listener that listens for when #photo_gallery is added
+// #photo_gallery is not added to entry pages until scrolling down far enough
+// #spp-gallery > #infinite-scroll-wrapper > #photo_gallery
+$("#spp-gallery").on(
+    "DOMNodeInserted",
+    function() {
+        $gallery = $("#photo_gallery");
+        $(this).off("DOMNodeInserted");
+        initAll();
+    }
+)
+
+// inits if it's a page with a gallery
+if ($gallery.length) {
+    initAll();
+    appendMenu();
+    return;
+}
+
+// inits if it's an entry. not using regex because reasons.
+// menu is visible in entry view before scrolling down to gallery
+if($("#spp-gallery").length) {
+    initAll();
+    appendMenu();
+    return;
+}
+
+// user activity page
+if(/^\/users\/[\w-]+\/activity/.test(window.location.pathname)) {
+    let feedItems = $("#feed_items .photo_feed img")
+    feedItems.off('unveil');
+    feedItems.customUnveil();
 }
