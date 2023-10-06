@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      1.3
+// @version      1.4
 // @description  Achieve filtering by replacing masonry with isotope
 // @author       e, NeatCrownn
 // @match        https://knowyourmeme.com/*photos*
