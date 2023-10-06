@@ -123,27 +123,25 @@ $.fn.customUnveil = function() {
         var isNsfw = imgClasses.contains('img-nsfw');
         var isSpoiler = imgClasses.contains('img-spoiler');
 
-        (function(item) {
-            if (isNsfw && isSpoiler && unveilNsfw && unveilSpoilers) {
-                item.src = item.getAttribute('data-original-image-url');
-                item.height = item.getAttribute('data-original-height');
-                $(item).parent().prepend(`<div class='unveiled nsfw-tag spoiler-tag'>NSFW | SPOILER</div>`);
-                return;
-            }
-            if (isSpoiler && unveilSpoilers) {
-                item.src = item.getAttribute('data-original-image-url');
-                item.height = item.getAttribute('data-original-height');
-                $(item).parent().prepend(`<div class='unveiled spoiler-tag'>SPOILER</div>`);
-                return;
-            }
-            if (isNsfw && unveilNsfw) {
-                item.src = item.getAttribute('data-original-image-url');
-                item.height = item.getAttribute('data-original-height');
-                $(item).parent().prepend(`<div class='unveiled nsfw-tag'>NSFW</div>`);
-                return;
-            }
-            item.src = item.getAttribute('data-src');
-        })(this);
+        if (isNsfw && isSpoiler && unveilNsfw && unveilSpoilers) {
+            this.src = this.getAttribute('data-original-image-url');
+            this.height = this.getAttribute('data-original-height');
+            $(this).parent().prepend(`<div class='unveiled nsfw-tag spoiler-tag'>NSFW | SPOILER</div>`);
+            return;
+        }
+        if (isSpoiler && unveilSpoilers) {
+            this.src = this.getAttribute('data-original-image-url');
+            this.height = this.getAttribute('data-original-height');
+            $(this).parent().prepend(`<div class='unveiled spoiler-tag'>SPOILER</div>`);
+            return;
+        }
+        if (isNsfw && unveilNsfw) {
+            this.src = this.getAttribute('data-original-image-url');
+            this.height = this.getAttribute('data-original-height');
+            $(this).parent().prepend(`<div class='unveiled nsfw-tag'>NSFW</div>`);
+            return;
+        }
+        this.src = this.getAttribute('data-src');
     });
 }
 
