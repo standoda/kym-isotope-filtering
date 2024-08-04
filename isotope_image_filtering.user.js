@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Isotope Filtering
-// @version      1.3
-// @description  Achieve filtering by replacing masonry with isotope
+// @version      1.4
+// @description  Achieve filtering by replacing the original gallery with Isotope
 // @author       e
 // @match        https://knowyourmeme.com/*photos*
 // @match        https://knowyourmeme.com/memes/*
@@ -15,28 +15,28 @@
 // ==/UserScript==
 /* globals jQuery, $ */
 
-var entryFilter = GM_getValue('entryFilter', '');
-var userFilter = GM_getValue('userFilter', '');
-var filterSwitch = GM_getValue('filterSwitch', true);
-var filterNsfw = GM_getValue('filterNsfw', false);
-var filterSpoilers = GM_getValue('filterSpoilers', false);
-var unveilNsfw = GM_getValue('unveilNsfw', false);
-var unveilSpoilers = GM_getValue('unveilSpoilers', false);
-var isNotEntryPage = !$('#section_header h1').find('a').length;
-var $gallery = $('#photo_gallery');
+let entryFilter = GM_getValue('entryFilter', '');
+let userFilter = GM_getValue('userFilter', '');
+let filterSwitch = GM_getValue('filterSwitch', true);
+let filterNsfw = GM_getValue('filterNsfw', false);
+let filterSpoilers = GM_getValue('filterSpoilers', false);
+let unveilNsfw = GM_getValue('unveilNsfw', false);
+let unveilSpoilers = GM_getValue('unveilSpoilers', false);
+const isNotEntryPage = !$('#section_header h1').find('a').length;
+const $gallery = $('#photo_gallery');
 
 function filterItems(items) {
     items.forEach(function(item) {
         if (item.classList.contains('item')) {
-            var link = item.querySelector('a');
-            var entry = entryFromItem(link);
-            var user = userFromItem(link);
-            var img_classes = item.querySelector('img').classList;
+            const link = item.querySelector('a');
+            const entry = entryFromItem(link);
+            const user = userFromItem(link);
+            const img_classes = item.querySelector('img').classList;
 
             if (isEntryHidden(entry) || isUserHidden(user) || isImageClassHidden(img_classes)) {
-                item.classList.add("hide");
+                item.classList.add("filter-hide");
             } else {
-                item.classList.remove("hide");
+                item.classList.remove("filter-hide");
             }
         }
     });
@@ -47,7 +47,7 @@ function entryFromItem(link) {
 }
 
 function userFromItem(link) {
-    var info = link.querySelector('.c');
+    const info = link.querySelector('.c');
     if (!info) return '';
 
     return info.textContent.match(/(?<=Uploaded by)[\s\S]*/)[0].trim().replace(/\n/g, ' ');
@@ -68,7 +68,7 @@ function isImageClassHidden(img_classes) {
 
 function updateFilter() {
     if (filterSwitch) {
-        $gallery.isotope({ filter: ':not(.hide)' });
+        $gallery.isotope({ filter: ':not(.filter-hide)' });
     } else {
         $gallery.isotope({ filter: '*' });
     }
@@ -76,9 +76,9 @@ function updateFilter() {
 
 $.fn.customUnveil = function() {
     this.each( function() {
-        var imgClasses = this.classList;
-        var isNsfw = imgClasses.contains('img-nsfw');
-        var isSpoiler = imgClasses.contains('img-spoiler');
+        const imgClasses = this.classList;
+        const isNsfw = imgClasses.contains('img-nsfw');
+        const isSpoiler = imgClasses.contains('img-spoiler');
 
         if (
             (isNsfw && !isSpoiler && unveilNsfw) ||
@@ -94,7 +94,10 @@ $.fn.customUnveil = function() {
 }
 
 function setupIsotope() {
-    $gallery.masonry('destroy');
+    // KYM is no longer using Masonry, prepare the gallery to be ready for Isotope
+    // $gallery.masonry('destroy');
+    const original_items = $('.gallery-group').children().unwrap();
+    original_items.removeAttr('style');
 
     $gallery.isotope({
         // options
@@ -123,7 +126,7 @@ function setupInfScroll(iso) {
         history: false,
     });
 
-    $gallery.on('append.infiniteScroll', function( event, response, path, items) {
+    $gallery.on('append.infiniteScroll', function(event, response, path, items) {
         // terminate infinite scroll if we reached the end
         if (!items.length) {
             $gallery.infiniteScroll('destroy');
@@ -139,7 +142,7 @@ function setupInfScroll(iso) {
 }
 
 function setupColorbox(item) {
-    if (filterSwitch && item.parentElement.classList.contains('hide')) {
+    if (filterSwitch && item.parentElement.classList.contains('filter-hide')) {
         // make it possible to also load colorbox on previously hidden items, if clicked after unhidden
         item.addEventListener('click', function () {
             loadColorbox(item);
@@ -176,14 +179,14 @@ function loadColorbox(item) {
 
 function initAll() {
     // workaround for loading js because @require doesn't work with @grant
-    var script = document.createElement('script');
+    const script = document.createElement('script');
     script.onload = function () {
-        var iso = setupIsotope();
+        const iso = setupIsotope();
         setupInfScroll(iso);
         // first filtering for items that were already loaded
-        var firstItems = iso.getItemElements();
+        const firstItems = iso.getItemElements();
         filterItems(firstItems);
-        var firstImages = $(firstItems).find('img')
+        const firstImages = $(firstItems).find('img')
         firstImages.off("unveil");
         firstImages.customUnveil();
         updateFilter();
@@ -197,7 +200,7 @@ function initAll() {
     script.src = "https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js";
     document.head.appendChild(script);
 
-    var pageStatus = `
+    const pageStatus = `
         <div id="page-load-status" style="display: none;">
           <div id="infscr-loading" class="infinite-scroll-request">
             <img alt="Loading..." src="https://s.kym-cdn.com/assets/nyan-loader-1e8a60aa470ba72bc1ade31dcc2e150f.gif" style="display: block;"><em>Loading moar...</em>
@@ -211,11 +214,12 @@ function initAll() {
 }
 
 function appendMenu() {
-    var overlay = `
+    const overlay = `
         <style>
         .combo-wrapper, #ctoolbar, .ad-container {
-            display:none !important;
+          display:none !important;
         }
+
         .open-button {
           background-color: #555;
           color: white;
@@ -363,7 +367,7 @@ function globalFilterReload() {
     if ($gallery.data('isotope')) {
         $('#entry_filter').val(entryFilter);
         $('#user_filter').val(userFilter);
-        var items = $gallery.data('isotope').getItemElements();
+        const items = $gallery.data('isotope').getItemElements();
         filterItems(items);
         updateFilter();
     }
@@ -378,15 +382,15 @@ const buttonStatus = {
 
 function entryBlockButton(entryToFilter) {
     // check if entry was filtered already
-    var entryIndex = entryFilter.indexOf(entryToFilter);
-    var entryIsFiltered = entryIndex >= 0;
+    const entryIndex = entryFilter.indexOf(entryToFilter);
+    const entryIsFiltered = entryIndex >= 0;
     return $('<a/>', {
         'href': 'javascript:;',
         'class':'red button filterbtn',
         'text': entryIsFiltered ? buttonStatus.removeEntry : buttonStatus.addEntry
     }).on('click', function(){
         entryFilter = GM_getValue('entryFilter', '');
-        entryIndex = entryFilter.indexOf(entryToFilter);
+        const entryIndex = entryFilter.indexOf(entryToFilter);
         if (entryIndex >= 0) {
             entryFilter = entryFilter.substr(0, entryIndex + 1) +
                           entryFilter.substr(entryIndex + entryToFilter.length);
@@ -403,15 +407,15 @@ function entryBlockButton(entryToFilter) {
 
 function userBlockButton(userToFilter) {
     // check if user was filtered already
-    var userIndex = userFilter.indexOf(userToFilter);
-    var userIsFiltered = userIndex >= 0;
+    const userIndex = userFilter.indexOf(userToFilter);
+    const userIsFiltered = userIndex >= 0;
     return $('<a/>', {
         'href': 'javascript:;',
         'class':'red button filterbtn',
         'text': userIsFiltered ? buttonStatus.removeUser : buttonStatus.addUser
     }).on('click', function() {
         userFilter = GM_getValue('userFilter', '');
-        userIndex = userFilter.indexOf(userToFilter);
+        const userIndex = userFilter.indexOf(userToFilter);
         if (userIndex >= 0) {
             userFilter = userFilter.substr(0, userIndex + 1) +
                          userFilter.substr(userIndex + userToFilter.length);
@@ -427,31 +431,31 @@ function userBlockButton(userToFilter) {
 }
 
 // append a button to entry pages to switch the filter on/off
-var entryHeader = $('#maru .rel.c');
+const entryHeader = $('#maru .rel.c');
 if (entryHeader.length){
-    var entryToFilter = '|' + /[^/]*$/.exec(window.location.href)[0] + '|';
-    button = entryBlockButton(entryToFilter);
+    const entryToFilter = '|' + /[^/]*$/.exec(window.location.href)[0] + '|';
+    const button = entryBlockButton(entryToFilter);
     button.css("margin-left", "10px");
     entryHeader.prepend(button);
 }
 
 // append a button to user pages as well
-var userHeader = $('#profile_info');
+const userHeader = $('#profile_info');
 if (userHeader.length) {
-    var userToFilter = '|' + $('#profile_bio').find('h1').text() + '|';
-    var button = userBlockButton(userToFilter);
+    const userToFilter = '|' + $('#profile_bio').find('h1').text() + '|';
+    const button = userBlockButton(userToFilter);
     button.css("margin-left", "24px");
     userHeader.prepend(button);
 }
 
 // buttons on colorbox overlay
 function appendColorboxButtons(item) {
-    entryToFilter = '|' + entryFromItem(item) + '|';
-    userToFilter = '|' + userFromItem(item) + '|';
+    const entryToFilter = '|' + entryFromItem(item) + '|';
+    const userToFilter = '|' + userFromItem(item) + '|';
 
-    var buttonsBlock = $('#cboxLoadedContent .r-top-block');
+    const buttonsBlock = $('#cboxLoadedContent .r-top-block');
     buttonsBlock.append('<hr style="width: 90%; margin-bottom: 1em;">');
-    var div = $('<div class="cbox-img-ctrls"></div>').appendTo(buttonsBlock);
+    const div = $('<div class="cbox-img-ctrls"></div>').appendTo(buttonsBlock);
     div.append(entryBlockButton(entryToFilter));
 
     if (userToFilter != "||") {
